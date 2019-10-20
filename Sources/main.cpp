@@ -1,6 +1,5 @@
 
 #include "hardware.h"
-#include "i2c.h"
 #include "mma845x.h"
 #include "ioexpander.h"
 
@@ -11,9 +10,14 @@ IoExpander io;
 
 int main() {
 
+	io.setAllPinsAsOutput();
+
 	for (;;) {
 
-
+		for (int i = 0; i < 8; i++) {
+			io.pinToggle(i);
+			waitMS(500);
+		}
 
 	}
 
