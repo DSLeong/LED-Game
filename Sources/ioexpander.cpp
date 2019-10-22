@@ -4,8 +4,14 @@
 
 using namespace USBDM;
 
-static constexpr unsigned I2C_ADDRESS = 0x20 << 1;
-static constexpr unsigned I2C_SPEED = 400 * kHz;
+static constexpr unsigned I2C_ADDRESS = 0x20 << 1;	// Address of i2c communication
+static constexpr unsigned I2C_SPEED = 400 * kHz;	// SPeed of i2c communication
+static constexpr uint8_t IO_IODIR = 0x00;			// IO-Expander IO Direction Register
+static constexpr uint8_t IO_GPIO = 0x09;			// IO-Expander General Purpose Input Output
+
+static constexpr uint8_t PINMASK(int x) {
+	return (1 << x); // Create a mask for a pin number
+}
 
 I2c0 i2c { I2C_SPEED, I2cMode_Polled };
 
@@ -33,7 +39,7 @@ void IoExpander::setPinAsOutput(int pin) {
 
 	if (!isPin(pin)) return;
 
-	pinDirections &= ~(1 << pin);
+	pinDirections &= ~PINMASK(pin);
 	applyPinDirections();
 
 }
@@ -57,7 +63,7 @@ void IoExpander::pinHigh(int pin) {
 
 	if (!isPin(pin)) return;
 
-	pinValues |= (1 << pin);
+	pinValues |= PINMASK(pin);
 	applyPinValues();
 
 }
@@ -71,7 +77,7 @@ void IoExpander::pinLow(int pin) {
 
 	if (!isPin(pin)) return;
 
-	pinValues &= ~(1 << pin);
+	pinValues &= ~PINMASK(pin);
 	applyPinValues();
 
 }
@@ -85,7 +91,7 @@ void IoExpander::pinToggle(int pin) {
 
 	if (!isPin(pin)) return;
 
-	pinValues ^= (1 << pin);
+	pinValues ^= PINMASK(pin);
 	applyPinValues();
 
 }
@@ -99,7 +105,7 @@ void IoExpander::setPinAsInput(int pin) {
 
 	if (!isPin(pin)) return;
 
-	pinDirections |= (1 << pin);
+	pinDirections |= PINMASK(pin);
 	applyPinDirections();
 
 }
@@ -115,11 +121,33 @@ void IoExpander::setAllPinsAsInput() {
 }
 
 /**
+ * Read the current logic state of the given pin.
+ *
+ * @param[in] pin - The pin number to check.
+ *
+ * @return - Boolean value of logic level, if it's true then pin is high.
+ */
+bool IoExpander::pinRead(int pin) {
+
+	if (!isPin(pin)) return false;
+
+	uint8_t txData[] = { IO_GPIO };
+	uint8_t rxData[1];
+
+	i2c.startTransaction();
+	i2c.txRx(I2C_ADDRESS, sizeof(txData), txData, sizeof(rxData), rxData);
+	i2c.endTransaction();
+
+	return (rxData[0] & PINMASK(pin));
+
+}
+
+/**
  * Transmit the current pin directions to the IO Expander.
  */
 void IoExpander::applyPinDirections() {
 
-	uint8_t txData[] = { 0x00, pinDirections };
+	uint8_t txData[] = { IO_IODIR, pinDirections };
 
 	i2c.startTransaction();
 	i2c.transmit(I2C_ADDRESS, sizeof(txData), txData);
@@ -132,7 +160,7 @@ void IoExpander::applyPinDirections() {
  */
 void IoExpander::applyPinValues() {
 
-	uint8_t txData[] = { 0x09, pinValues };
+	uint8_t txData[] = { IO_GPIO, pinValues };
 
 	i2c.startTransaction();
 	i2c.transmit(I2C_ADDRESS, sizeof(txData), txData);
@@ -145,7 +173,7 @@ void IoExpander::applyPinValues() {
  *
  * @param[in] pin - Pin number to check.
  *
- * @return - Boolean value, true if pin is part of IO Expander.
+ * @return - Boolean value, true if pin is part of the IO Expander.
  */
 bool IoExpander::isPin(int pin) {
 
