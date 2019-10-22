@@ -11,13 +11,21 @@ IoExpander io;
 int main() {
 
 	io.setAllPinsAsOutput();
+	io.setPinAsInput(0);
+
+	int delay = 0;
 
 	for (;;) {
 
-		for (int i = 0; i < 8; i++) {
+		if (io.pinRead(0)) delay = 50;
+		else delay = 0;
+
+		for (int i = 1; i < 8; i++) {
 			io.pinToggle(i);
-			waitMS(500);
+			waitMS(delay);
 		}
+
+		waitMS(500);
 
 	}
 
